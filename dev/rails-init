@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
 docker-compose run --rm rails rails new . --css=sass --javascript=esbuild --database=postgresql --force
+
+# TODO: set up test environment for integration tests using selenium and chrome docker service
+
+# ensure correct user is owner of all newly created files
 docker-compose run --rm rails chown -R $(id -u):$(id -g) .
