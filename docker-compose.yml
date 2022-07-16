@@ -1,0 +1,98 @@
+version: '3.3'
+services:
+  rails:
+    build:
+      context: .
+    depends_on:
+      - db
+      - chrome
+    volumes:
+      - ./src:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+      - bundle:/bundle
+    ports:
+      - 1234:1234
+      - 3000:3000
+      - 3001:3001
+      - 8080:8080
+      - 26162:26162
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+    environment:
+      - "HOST=localhost:3000"
+      - "CHROME_URL=http://chrome:3333/webdriver"
+      - "CAPYBARA_SERVER_HOST=chrome"
+      - "CAPYBARA_SERVER_PORT=3333"
+      - "REDIS_URL=redis://redis:6379/1"
+      - "DATABASE_HOST=db"
+      - "DATABASE_USER=postgres"
+      - "DATABASE_PASSWORD=password"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "5"
+    tty: true
+    stdin_open: true
+    command: bash -c "rm -f tmp/pids/server.pid && bin/dev"
+    #command: rdebug-ide --debug --host 0.0.0.0 --port 1234 -- bin/rails s -p 3000 -b 0.0.0.0
+  redis:
+    image: redis:6.2-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "5"
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      replicas: 1
+  db:
+    image: postgres:14-alpine
+    volumes:
+       - db_data:/var/lib/postgresql/data
+       - db_dump:/var/dump
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=app_development
+    ports:
+      - 5432:5432
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "5"
+  chrome:
+    image: browserless/chrome:1.51-chrome-stable
+    ports:
+      - "3333:3333"
+    # Mount application source code to support file uploading
+    # (otherwise Chrome won't be able to find files).
+    # NOTE: Make sure you use absolute paths in `#attach_file`.
+    volumes:
+      - .:/app:cached
+    networks:
+      - backend
+    environment:
+      # By default, it uses 3000, which is typically used by Rails.
+      - "PORT=3333"
+      # Set connection timeout to avoid timeout exception during debugging
+      # https://docs.browserless.io/docs/docker.html#connection-timeout
+      - "CONNECTION_TIMEOUT=600000"
+volumes:
+  db_data:
+  db_dump:
+  redis_data:
+  node_modules:
+  bundle:
+networks:
+  backend:

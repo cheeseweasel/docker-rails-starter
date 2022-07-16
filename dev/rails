@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+docker-compose run --rm rails rails $@
+docker-compose run --rm rails chown -R $(id -u):$(id -g) .
